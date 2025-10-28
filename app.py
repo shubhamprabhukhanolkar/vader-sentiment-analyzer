@@ -12,20 +12,28 @@ app = Flask(__name__)
 class RedditStockSentiment:
     def __init__(self, config_file='secrets.ini'):
         """Initialize Reddit API connection and VADER sentiment analyzer."""
-        config = configparser.ConfigParser()
-        if not os.path.exists(config_file):
-            raise FileNotFoundError(f"{config_file} not found.")
         
-        config.read(config_file)
+        # Try to get credentials from environment variables first (for deployment)
+        client_id = os.getenv('REDDIT_CLIENT_ID')
+        client_secret = os.getenv('REDDIT_CLIENT_SECRET')
+        user_agent = os.getenv('REDDIT_USER_AGENT')
         
-        try:
-            client_id = config.get('REDDIT', 'CLIENT_ID')
-            client_secret = config.get('REDDIT', 'CLIENT_SECRET')
-            user_agent = config.get('REDDIT', 'USER_AGENT')
-        except (configparser.NoSectionError, configparser.NoOptionError):
-            client_id = config.get('reddit', 'client_id')
-            client_secret = config.get('reddit', 'client_secret')
-            user_agent = config.get('reddit', 'user_agent')
+        # If not in environment, read from secrets.ini (for local development)
+        if not client_id or not client_secret or not user_agent:
+            config = configparser.ConfigParser()
+            if not os.path.exists(config_file):
+                raise FileNotFoundError(f"{config_file} not found. Please create it or set environment variables.")
+            
+            config.read(config_file)
+            
+            try:
+                client_id = config.get('REDDIT', 'CLIENT_ID')
+                client_secret = config.get('REDDIT', 'CLIENT_SECRET')
+                user_agent = config.get('REDDIT', 'USER_AGENT')
+            except (configparser.NoSectionError, configparser.NoOptionError):
+                client_id = config.get('reddit', 'client_id')
+                client_secret = config.get('reddit', 'client_secret')
+                user_agent = config.get('reddit', 'user_agent')
         
         self.reddit = praw.Reddit(
             client_id=client_id,
@@ -215,4 +223,6 @@ def analyze():
         return jsonify({'error': str(e)}), 500
 
 if __name__ == '__main__':
-    app.run(debug=True, host='0.0.0.0', port=5000)
+    # Get port from environment variable (for deployment) or use 5000 (for local)
+    port = int(os.getenv('PORT', 5000))
+    app.run(debug=False, host='0.0.0.0', port=port)
