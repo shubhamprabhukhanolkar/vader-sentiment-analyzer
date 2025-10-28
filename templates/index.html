@@ -1,0 +1,420 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Stock Sentiment Analyzer</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+        
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+        
+        .header {
+            text-align: center;
+            color: white;
+            margin-bottom: 40px;
+        }
+        
+        .header h1 {
+            font-size: 2.5em;
+            margin-bottom: 10px;
+        }
+        
+        .header p {
+            font-size: 1.2em;
+            opacity: 0.9;
+        }
+        
+        .control-panel {
+            background: white;
+            border-radius: 15px;
+            padding: 30px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+            margin-bottom: 30px;
+        }
+        
+        .form-group {
+            margin-bottom: 20px;
+        }
+        
+        .form-group label {
+            display: block;
+            font-weight: 600;
+            margin-bottom: 8px;
+            color: #333;
+        }
+        
+        .form-group select {
+            width: 100%;
+            padding: 12px;
+            border: 2px solid #e0e0e0;
+            border-radius: 8px;
+            font-size: 16px;
+            background: white;
+            cursor: pointer;
+            transition: border 0.3s;
+        }
+        
+        .form-group select:focus {
+            outline: none;
+            border-color: #667eea;
+        }
+        
+        .analyze-btn {
+            width: 100%;
+            padding: 15px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            border-radius: 8px;
+            font-size: 18px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: transform 0.2s;
+        }
+        
+        .analyze-btn:hover {
+            transform: translateY(-2px);
+        }
+        
+        .analyze-btn:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+            transform: none;
+        }
+        
+        .loading {
+            text-align: center;
+            padding: 40px;
+            display: none;
+        }
+        
+        .spinner {
+            border: 4px solid #f3f3f3;
+            border-top: 4px solid #667eea;
+            border-radius: 50%;
+            width: 50px;
+            height: 50px;
+            animation: spin 1s linear infinite;
+            margin: 0 auto 20px;
+        }
+        
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        
+        .results-container {
+            display: none;
+        }
+        
+        .summary-cards {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 20px;
+            margin-bottom: 30px;
+        }
+        
+        .summary-card {
+            background: white;
+            border-radius: 12px;
+            padding: 20px;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.1);
+            text-align: center;
+        }
+        
+        .summary-card h3 {
+            color: #666;
+            font-size: 14px;
+            margin-bottom: 10px;
+            text-transform: uppercase;
+        }
+        
+        .summary-card .value {
+            font-size: 32px;
+            font-weight: bold;
+            color: #333;
+        }
+        
+        .summary-card.positive .value {
+            color: #10b981;
+        }
+        
+        .summary-card.negative .value {
+            color: #ef4444;
+        }
+        
+        .summary-card.neutral .value {
+            color: #f59e0b;
+        }
+        
+        .results-table-container {
+            background: white;
+            border-radius: 15px;
+            padding: 30px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+            overflow-x: auto;
+        }
+        
+        .results-table-container h2 {
+            margin-bottom: 20px;
+            color: #333;
+        }
+        
+        table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+        
+        thead {
+            background: #f8f9fa;
+        }
+        
+        th {
+            padding: 15px;
+            text-align: left;
+            font-weight: 600;
+            color: #333;
+            border-bottom: 2px solid #e0e0e0;
+        }
+        
+        td {
+            padding: 15px;
+            border-bottom: 1px solid #e0e0e0;
+        }
+        
+        tbody tr:hover {
+            background: #f8f9fa;
+        }
+        
+        .sentiment-badge {
+            display: inline-block;
+            padding: 5px 12px;
+            border-radius: 20px;
+            font-weight: 600;
+            font-size: 14px;
+        }
+        
+        .sentiment-positive {
+            background: #d1fae5;
+            color: #065f46;
+        }
+        
+        .sentiment-negative {
+            background: #fee2e2;
+            color: #991b1b;
+        }
+        
+        .sentiment-neutral {
+            background: #fef3c7;
+            color: #92400e;
+        }
+        
+        .post-link {
+            color: #667eea;
+            text-decoration: none;
+            font-weight: 500;
+        }
+        
+        .post-link:hover {
+            text-decoration: underline;
+        }
+        
+        .error-message {
+            background: #fee2e2;
+            color: #991b1b;
+            padding: 15px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+            display: none;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>📈 Stock Sentiment Analyzer</h1>
+            <p>Analyze Reddit sentiment for stocks using AI</p>
+        </div>
+        
+        <div class="control-panel">
+            <div class="error-message" id="errorMessage"></div>
+            
+            <div class="form-group">
+                <label for="stock">Select Stock:</label>
+                <select id="stock">
+                    <option value="">-- Choose a stock --</option>
+                    {% for stock in stocks %}
+                    <option value="{{ stock }}">{{ stock }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            
+            <div class="form-group">
+                <label for="subreddit">Select Subreddit:</label>
+                <select id="subreddit">
+                    <option value="">-- Choose a subreddit --</option>
+                    {% for subreddit in subreddits %}
+                    <option value="{{ subreddit }}">r/{{ subreddit }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            
+            <button class="analyze-btn" onclick="analyzeSentiment()">
+                Analyze Sentiment
+            </button>
+        </div>
+        
+        <div class="loading" id="loading">
+            <div class="spinner"></div>
+            <p style="color: white; font-size: 18px;">Analyzing posts...</p>
+        </div>
+        
+        <div class="results-container" id="resultsContainer">
+            <div class="summary-cards" id="summaryCards"></div>
+            
+            <div class="results-table-container">
+                <h2>Detailed Results</h2>
+                <table id="resultsTable">
+                    <thead>
+                        <tr>
+                            <th>Timestamp</th>
+                            <th>Post</th>
+                            <th>Sentiment Score</th>
+                            <th>Link</th>
+                        </tr>
+                    </thead>
+                    <tbody id="resultsBody">
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+    
+    <script>
+        async function analyzeSentiment() {
+            const stock = document.getElementById('stock').value;
+            const subreddit = document.getElementById('subreddit').value;
+            const errorMessage = document.getElementById('errorMessage');
+            const loading = document.getElementById('loading');
+            const resultsContainer = document.getElementById('resultsContainer');
+            const analyzeBtn = document.querySelector('.analyze-btn');
+            
+            errorMessage.style.display = 'none';
+            errorMessage.textContent = '';
+            
+            if (!stock || !subreddit) {
+                errorMessage.textContent = 'Please select both stock and subreddit';
+                errorMessage.style.display = 'block';
+                return;
+            }
+            
+            analyzeBtn.disabled = true;
+            loading.style.display = 'block';
+            resultsContainer.style.display = 'none';
+            
+            try {
+                const response = await fetch('/analyze', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({ stock, subreddit })
+                });
+                
+                const data = await response.json();
+                
+                if (!response.ok) {
+                    throw new Error(data.error || 'Analysis failed');
+                }
+                
+                displayResults(data);
+                resultsContainer.style.display = 'block';
+                
+            } catch (error) {
+                errorMessage.textContent = error.message;
+                errorMessage.style.display = 'block';
+            } finally {
+                loading.style.display = 'none';
+                analyzeBtn.disabled = false;
+            }
+        }
+        
+        function displayResults(data) {
+            const { results, summary } = data;
+            
+            const summaryCards = document.getElementById('summaryCards');
+            summaryCards.innerHTML = `
+                <div class="summary-card">
+                    <h3>Total Posts</h3>
+                    <div class="value">${summary.total_posts}</div>
+                </div>
+                <div class="summary-card">
+                    <h3>Avg Sentiment</h3>
+                    <div class="value">${summary.avg_sentiment}</div>
+                </div>
+                <div class="summary-card positive">
+                    <h3>Positive</h3>
+                    <div class="value">${summary.positive_posts}</div>
+                </div>
+                <div class="summary-card negative">
+                    <h3>Negative</h3>
+                    <div class="value">${summary.negative_posts}</div>
+                </div>
+                <div class="summary-card neutral">
+                    <h3>Neutral</h3>
+                    <div class="value">${summary.neutral_posts}</div>
+                </div>
+            `;
+            
+            const resultsBody = document.getElementById('resultsBody');
+            resultsBody.innerHTML = '';
+            
+            results.forEach(result => {
+                const sentiment = result.sentiment_score;
+                let sentimentClass, sentimentLabel;
+                
+                if (sentiment >= 0.05) {
+                    sentimentClass = 'sentiment-positive';
+                    sentimentLabel = 'Positive';
+                } else if (sentiment <= -0.05) {
+                    sentimentClass = 'sentiment-negative';
+                    sentimentLabel = 'Negative';
+                } else {
+                    sentimentClass = 'sentiment-neutral';
+                    sentimentLabel = 'Neutral';
+                }
+                
+                const row = document.createElement('tr');
+                row.innerHTML = `
+                    <td>${result.timestamp}</td>
+                    <td>${result.post}</td>
+                    <td>
+                        <span class="sentiment-badge ${sentimentClass}">
+                            ${sentiment} (${sentimentLabel})
+                        </span>
+                    </td>
+                    <td>
+                        <a href="${result.url}" target="_blank" class="post-link">View Post</a>
+                    </td>
+                `;
+                resultsBody.appendChild(row);
+            });
+        }
+    </script>
+</body>
+</html>
